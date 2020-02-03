@@ -4,7 +4,6 @@ provider:
   name: aws
   runtime: python3.7
   region: ap-southeast-2
-  memorySize: 1024
   timeout: 300
 
   iamRoleStatements:
@@ -42,8 +41,8 @@ provider:
       Action:
         - "sns:Publish"
       Resource:
-        - { "Fn::Join" : ["", ["arn:aws:sns:::", { "Ref" : "SNSTopicAntivirusScanStart" } ] ]  }
-        - { "Fn::Join" : ["", ["arn:aws:sns:::", { "Ref" : "SNSTopicAntivirusScanStatus" } ] ]  }
+        - { "Ref" : "SNSTopicAntivirusScanStart" }
+        - { "Ref" : "SNSTopicAntivirusScanStatus" }
 
   environment:
     AV_DEFINITION_S3_BUCKET: { Ref: "S3BucketClamavVirusDatabase" }
@@ -62,15 +61,16 @@ functions:
       - schedule: rate(3 hours)
     layers:
       - { Ref: ClamavLambdaLayer }
+    memorySize: 1152
 
   scanFunction:
     handler: scan.lambda_handler
     environment:
-      AV_SCAN_START_SNS_ARN: ${self:SNSTopicAntivirusScanStart}
-      AV_STATUS_SNS_ARN: ${self:SNSTopicAntivirusScanStatus}
-      CLAMSCAN_PATH: "/opt/clamav/clamscan"
+      AV_STATUS_SNS_ARN: { Ref: "SNSTopicAntivirusScanStatus" }
+      CLAMDSCAN_PATH: "/opt/clamav/clamdscan"
     layers:
       - { Ref: ClamavLambdaLayer }
+    memorySize: 2048
 
 layers:
   clamav:

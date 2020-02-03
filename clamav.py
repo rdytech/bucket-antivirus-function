@@ -24,6 +24,7 @@ import boto3
 import botocore
 from pytz import utc
 
+from common import AV_DEFINITION_S3_BUCKET
 from common import AV_DEFINITION_S3_PREFIX
 from common import AV_DEFINITION_PATH
 from common import AV_DEFINITION_FILE_PREFIXES
@@ -33,7 +34,7 @@ from common import AV_SIGNATURE_UNKNOWN
 from common import AV_STATUS_CLEAN
 from common import AV_STATUS_INFECTED
 from common import CLAMAVLIB_PATH
-from common import CLAMSCAN_PATH
+from common import CLAMDSCAN_PATH
 from common import FRESHCLAM_PATH
 from common import create_dir
 
@@ -187,15 +188,15 @@ def scan_output_to_json(output):
 def scan_file(path):
     av_env = os.environ.copy()
     av_env["LD_LIBRARY_PATH"] = CLAMAVLIB_PATH
-    print("Starting clamscan of %s." % path)
+    print("Starting clamdscan of %s." % path)
     av_proc = subprocess.Popen(
-        [CLAMSCAN_PATH, "-v", "-a", "--stdout", "-d", AV_DEFINITION_PATH, path],
+        [CLAMDSCAN_PATH, "-v", "--stdout", "--config-file", "%s/scan.conf" % CLAMAVLIB_PATH, path],
         stderr=subprocess.STDOUT,
         stdout=subprocess.PIPE,
         env=av_env,
     )
     output = av_proc.communicate()[0].decode()
-    print("clamscan output:\n%s" % output)
+    print("clamdscan output:\n%s" % output)
 
     # Turn the output into a data source we can read
     summary = scan_output_to_json(output)
@@ -205,6 +206,36 @@ def scan_file(path):
         signature = summary.get(path, AV_SIGNATURE_UNKNOWN)
         return AV_STATUS_INFECTED, signature
     else:
-        msg = "Unexpected exit code from clamscan: %s.\n" % av_proc.returncode
+        msg = "Unexpected exit code from clamdscan: %s.\n" % av_proc.returncode
         print(msg)
         raise Exception(msg)
+
+def start_clamd_daemon():
+    s3 = boto3.resource("s3")
+    s3_client = boto3.client("s3")
+
+    to_download = update_defs_from_s3(
+        s3_client, AV_DEFINITION_S3_BUCKET, AV_DEFINITION_S3_PREFIX
+    )
+
+    for download in to_download.values():
+        s3_path = download["s3_path"]
+        local_path = download["local_path"]
+        print("Downloading definition file %s from s3://%s" % (local_path, s3_path))
+        s3.Bucket(AV_DEFINITION_S3_BUCKET).download_file(s3_path, local_path)
+        print("Downloading definition file %s complete!" % (local_path))
+
+    av_env = os.environ.copy()
+    av_env["LD_LIBRARY_PATH"] = CLAMAVLIB_PATH
+
+    print("Starting clamd")
+
+    subprocess.Popen(
+        ["%s/clamd" % CLAMAVLIB_PATH, "-c", "%s/scan.conf" % CLAMAVLIB_PATH],
+        stderr=subprocess.STDOUT,
+        stdout=subprocess.PIPE,
+        env=av_env,
+    ).wait()
+
+    clamd_log_file = open("/tmp/clamd.log")
+    print(clamd_log_file.read())
