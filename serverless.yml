@@ -90,6 +90,14 @@ resources:
     SNSTopicAntivirusScanStatus:
       Type: AWS::SNS::Topic
 
+    AntivirusScanStatusSNSTopicSSMParameter:
+      Type: AWS::SSM::Parameter
+      Properties:
+        Description : "Antivirus Scan Status SNS Topic"
+        Name: !Sub "/bucket-antivirus-function/ANTIVIRUS_SCAN_STATUS_SNS_TOPIC"
+        Type: String
+        Value: !Ref SNSTopicAntivirusScanStatus
+
 custom:
   pythonRequirements:
     dockerizePip: non-linux
