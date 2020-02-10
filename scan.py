@@ -16,6 +16,7 @@
 import copy
 import json
 import os
+import signal
 from urllib.parse import unquote_plus
 from distutils.util import strtobool
 
@@ -40,8 +41,8 @@ from common import AV_TIMESTAMP_METADATA
 from common import create_dir
 from common import get_timestamp
 
-# Start clamd as a daemon process on cold start
-clamav.start_clamd_daemon()
+
+clamd_pid = None
 
 def event_object(event, event_source="s3"):
 
@@ -200,7 +201,24 @@ def sns_scan_results(
     )
 
 
+def kill_process_by_pid(pid):
+    # Check if process is running on PID
+    try:
+        os.kill(clamd_pid, 0)
+    except OSError:
+        return
+
+    print("Killing the process by PID %s" % clamd_pid)
+
+    try:
+        os.kill(clamd_pid, signal.SIGTERM)
+    except OSError:
+        os.kill(clamd_pid, signal.SIGKILL)
+
+
 def lambda_handler(event, context):
+    global clamd_pid
+
     s3 = boto3.resource("s3")
     s3_client = boto3.client("s3")
     sns_client = boto3.client("sns")
@@ -208,6 +226,13 @@ def lambda_handler(event, context):
     # Get some environment variables
     ENV = os.getenv("ENV", "")
     EVENT_SOURCE = os.getenv("EVENT_SOURCE", "S3")
+
+    if not clamav.is_clamd_running():
+        if clamd_pid is not None:
+            kill_process_by_pid(clamd_pid)
+
+        clamd_pid = clamav.start_clamd_daemon()
+        print("Clamd PID: %s" % clamd_pid)
 
     start_time = get_timestamp()
     print("Script starting at %s\n" % (start_time))

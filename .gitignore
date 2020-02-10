@@ -118,7 +118,6 @@ tmp/
 # EICAR Files
 *eicar*
 
-# Serverless directories
-.serverless
-layers
-node_modules
+# aws-sam
+.aws-sam
+samconfig.toml

@@ -38,15 +38,11 @@ RUN cp -r /tmp/usr/bin/clamdscan \
        /tmp/usr/lib64/* \
        /opt/app/clamav/
 
-RUN echo "DatabaseDirectory /tmp/clamav_defs" >> /opt/app/clamav/scan.conf
+RUN echo "DatabaseDirectory /tmp/clamav_defs" > /opt/app/clamav/scan.conf
 RUN echo "PidFile /tmp/clamd.pid" >> /opt/app/clamav/scan.conf
 RUN echo "LocalSocket /tmp/clamd.sock" >> /opt/app/clamav/scan.conf
 RUN echo "LogFile /tmp/clamd.log" >> /opt/app/clamav/scan.conf
 
 # Fix the freshclam.conf settings
-RUN echo "DatabaseMirror database.clamav.net" >> /opt/app/clamav/freshclam.conf
+RUN echo "DatabaseMirror database.clamav.net" > /opt/app/clamav/freshclam.conf
 RUN echo "CompressLocalDatabase yes" >> /opt/app/clamav/freshclam.conf
-
-WORKDIR /opt/app
-
-RUN zip -r9 /opt/app/clamav.zip .

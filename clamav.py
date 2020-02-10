@@ -19,6 +19,7 @@ import os
 import pwd
 import re
 import subprocess
+import socket
 
 import boto3
 import botocore
@@ -36,6 +37,7 @@ from common import AV_STATUS_INFECTED
 from common import CLAMAVLIB_PATH
 from common import CLAMDSCAN_PATH
 from common import FRESHCLAM_PATH
+from common import CLAMDSCAN_TIMEOUT
 from common import create_dir
 
 
@@ -195,20 +197,47 @@ def scan_file(path):
         stdout=subprocess.PIPE,
         env=av_env,
     )
-    output = av_proc.communicate()[0].decode()
-    print("clamdscan output:\n%s" % output)
 
-    # Turn the output into a data source we can read
-    summary = scan_output_to_json(output)
+    try:
+        output, errors = av_proc.communicate(timeout=CLAMDSCAN_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        av_proc.kill()
+        output, errors = av_proc.communicate()
+
+    decoded_output = output.decode()
+    print("clamdscan output:\n%s" % decoded_output)
+
     if av_proc.returncode == 0:
         return AV_STATUS_CLEAN, AV_SIGNATURE_OK
     elif av_proc.returncode == 1:
+        # Turn the output into a data source we can read
+        summary = scan_output_to_json(decoded_output)
         signature = summary.get(path, AV_SIGNATURE_UNKNOWN)
         return AV_STATUS_INFECTED, signature
     else:
         msg = "Unexpected exit code from clamdscan: %s.\n" % av_proc.returncode
+
+        if errors:
+            msg += "Errors: %s\n" % errors.decode()
+
         print(msg)
         raise Exception(msg)
+
+def is_clamd_running():
+    clamd_socket = '/tmp/clamd.sock'
+    print("Checking if clamd is running on %s" %clamd_socket)
+
+    if os.path.exists(clamd_socket):
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.connect(clamd_socket)
+            s.send(b'PING')
+            data = s.recv(32)
+
+        print("Received %s in response to PING" % repr(data))
+        return data == b'PONG\n'
+
+    print("Clamd is not running on %s" % clamd_socket)
+    return False
 
 def start_clamd_daemon():
     s3 = boto3.resource("s3")
@@ -230,12 +259,14 @@ def start_clamd_daemon():
 
     print("Starting clamd")
 
-    subprocess.Popen(
+    clamd_proc = subprocess.Popen(
         ["%s/clamd" % CLAMAVLIB_PATH, "-c", "%s/scan.conf" % CLAMAVLIB_PATH],
-        stderr=subprocess.STDOUT,
-        stdout=subprocess.PIPE,
         env=av_env,
-    ).wait()
+    )
+
+    clamd_proc.wait()
 
     clamd_log_file = open("/tmp/clamd.log")
     print(clamd_log_file.read())
+
+    return clamd_proc.pid
