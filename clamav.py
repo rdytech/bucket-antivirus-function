@@ -20,6 +20,7 @@ import pwd
 import re
 import subprocess
 import socket
+import errno
 
 import boto3
 import botocore
@@ -39,6 +40,7 @@ from common import CLAMDSCAN_PATH
 from common import FRESHCLAM_PATH
 from common import CLAMDSCAN_TIMEOUT
 from common import create_dir
+from common import CLAMD_SOCKET
 
 
 RE_SEARCH_DIR = r"SEARCH_DIR\(\"=([A-z0-9\/\-_]*)\"\)"
@@ -224,19 +226,23 @@ def scan_file(path):
         raise Exception(msg)
 
 def is_clamd_running():
-    clamd_socket = '/tmp/clamd.sock'
-    print("Checking if clamd is running on %s" %clamd_socket)
+    print("Checking if clamd is running on %s" % CLAMD_SOCKET)
 
-    if os.path.exists(clamd_socket):
+    if os.path.exists(CLAMD_SOCKET):
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-            s.connect(clamd_socket)
+            s.settimeout(10)
+            s.connect(CLAMD_SOCKET)
             s.send(b'PING')
-            data = s.recv(32)
+            try:
+                data = s.recv(32)
+            except (socket.timeout, socket.error) as e:
+                print("Failed to read from socket: %s\n" % e)
+                return False
 
         print("Received %s in response to PING" % repr(data))
         return data == b'PONG\n'
 
-    print("Clamd is not running on %s" % clamd_socket)
+    print("Clamd is not running on %s" % CLAMD_SOCKET)
     return False
 
 def start_clamd_daemon():
@@ -258,6 +264,14 @@ def start_clamd_daemon():
     av_env["LD_LIBRARY_PATH"] = CLAMAVLIB_PATH
 
     print("Starting clamd")
+
+    if os.path.exists(CLAMD_SOCKET):
+        try:
+            os.unlink(CLAMD_SOCKET)
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                print("Could not unlink clamd socket %s" % CLAMD_SOCKET)
+                raise
 
     clamd_proc = subprocess.Popen(
         ["%s/clamd" % CLAMAVLIB_PATH, "-c", "%s/scan.conf" % CLAMAVLIB_PATH],

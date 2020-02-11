@@ -37,6 +37,7 @@ CLAMAVLIB_PATH = os.getenv("CLAMAVLIB_PATH", "./bin")
 CLAMDSCAN_PATH = os.getenv("CLAMDSCAN_PATH", "./bin/clamdscan")
 FRESHCLAM_PATH = os.getenv("FRESHCLAM_PATH", "./bin/freshclam")
 CLAMDSCAN_TIMEOUT = os.getenv("CLAMDSCAN_TIMEOUT", 240)
+CLAMD_SOCKET = os.getenv("CLAMD_SOCKET", "/tmp/clamd.sock")
 AV_PROCESS_ORIGINAL_VERSION_ONLY = os.getenv(
     "AV_PROCESS_ORIGINAL_VERSION_ONLY", "False"
 )

@@ -59,11 +59,11 @@ coverage: clean  ## Run python tests with coverage
 
 .PHONY: scan
 scan:
-	sam local generate-event s3 [put/delete] \
+	sam local generate-event s3 put \
 		--bucket $(TEST_BUCKET) \
 		--key $(TEST_KEY) \
-	| sam local invoke ScanFunction
+	| sam local invoke ScanFunction --env-vars .sam-env -e -
 
 .PHONY: update
 update:
-	sam local invoke UpdateAntivirusDatabaseFunction
+	sam local invoke UpdateFunction --env-vars .sam-env --no-event

@@ -121,3 +121,4 @@ tmp/
 # aws-sam
 .aws-sam
 samconfig.toml
+.sam-env
