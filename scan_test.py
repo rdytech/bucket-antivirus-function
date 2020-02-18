@@ -246,6 +246,10 @@ class TestScan(unittest.TestCase):
             "TargetArn": sns_arn,
             "Message": json.dumps({"default": json.dumps(message)}),
             "MessageStructure": "json",
+            "MessageAttributes": {
+                "bucket": {"DataType": "String", "StringValue": self.s3_bucket_name},
+                "key": {"DataType": "String", "StringValue": self.s3_key_name},
+            },
         }
         sns_stubber.add_response("publish", publish_response, publish_expected_params)
 
@@ -383,6 +387,8 @@ class TestScan(unittest.TestCase):
             "MessageAttributes": {
                 "av-status": {"DataType": "String", "StringValue": scan_result},
                 "av-signature": {"DataType": "String", "StringValue": scan_signature},
+                "bucket": {"DataType": "String", "StringValue": self.s3_bucket_name},
+                "key": {"DataType": "String", "StringValue": self.s3_key_name},
             },
             "MessageStructure": "json",
         }

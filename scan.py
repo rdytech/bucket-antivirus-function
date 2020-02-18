@@ -24,8 +24,6 @@ import boto3
 
 import clamav
 import metrics
-from common import AV_DEFINITION_S3_BUCKET
-from common import AV_DEFINITION_S3_PREFIX
 from common import AV_DELETE_INFECTED_FILES
 from common import AV_PROCESS_ORIGINAL_VERSION_ONLY
 from common import AV_SCAN_START_METADATA
@@ -43,6 +41,7 @@ from common import get_timestamp
 
 
 clamd_pid = None
+
 
 def event_object(event, event_source="s3"):
 
@@ -165,6 +164,10 @@ def sns_start_scan(sns_client, s3_object, scan_start_sns_arn, timestamp):
         TargetArn=scan_start_sns_arn,
         Message=json.dumps({"default": json.dumps(message)}),
         MessageStructure="json",
+        MessageAttributes={
+            "bucket": {"DataType": "String", "StringValue": s3_object.bucket_name},
+            "key": {"DataType": "String", "StringValue": s3_object.key},
+        },
     )
 
 
@@ -197,6 +200,8 @@ def sns_scan_results(
                 "DataType": "String",
                 "StringValue": scan_signature,
             },
+            "bucket": {"DataType": "String", "StringValue": s3_object.bucket_name},
+            "key": {"DataType": "String", "StringValue": s3_object.key},
         },
     )
 
