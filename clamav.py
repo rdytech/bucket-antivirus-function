@@ -194,7 +194,14 @@ def scan_file(path):
     av_env["LD_LIBRARY_PATH"] = CLAMAVLIB_PATH
     print("Starting clamdscan of %s." % path)
     av_proc = subprocess.Popen(
-        [CLAMDSCAN_PATH, "-v", "--stdout", "--config-file", "%s/scan.conf" % CLAMAVLIB_PATH, path],
+        [
+            CLAMDSCAN_PATH,
+            "-v",
+            "--stdout",
+            "--config-file",
+            "%s/scan.conf" % CLAMAVLIB_PATH,
+            path,
+        ],
         stderr=subprocess.STDOUT,
         stdout=subprocess.PIPE,
         env=av_env,
@@ -225,6 +232,7 @@ def scan_file(path):
         print(msg)
         raise Exception(msg)
 
+
 def is_clamd_running():
     print("Checking if clamd is running on %s" % CLAMD_SOCKET)
 
@@ -232,7 +240,7 @@ def is_clamd_running():
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
             s.settimeout(10)
             s.connect(CLAMD_SOCKET)
-            s.send(b'PING')
+            s.send(b"PING")
             try:
                 data = s.recv(32)
             except (socket.timeout, socket.error) as e:
@@ -240,10 +248,11 @@ def is_clamd_running():
                 return False
 
         print("Received %s in response to PING" % repr(data))
-        return data == b'PONG\n'
+        return data == b"PONG\n"
 
     print("Clamd is not running on %s" % CLAMD_SOCKET)
     return False
+
 
 def start_clamd_daemon():
     s3 = boto3.resource("s3")
