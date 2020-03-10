@@ -20,6 +20,7 @@ import signal
 from urllib.parse import unquote_plus
 from distutils.util import strtobool
 
+from botocore.client import Config
 import boto3
 
 import clamav
@@ -224,9 +225,11 @@ def kill_process_by_pid(pid):
 def lambda_handler(event, context):
     global clamd_pid
 
+    aws_config = Config(connect_timeout=5)
+
     s3 = boto3.resource("s3")
-    s3_client = boto3.client("s3")
-    sns_client = boto3.client("sns")
+    s3_client = boto3.client("s3", config=aws_config)
+    sns_client = boto3.client("sns", config=aws_config)
 
     # Get some environment variables
     ENV = os.getenv("ENV", "")

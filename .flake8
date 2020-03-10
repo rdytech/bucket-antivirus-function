@@ -1,3 +1,4 @@
 [flake8]
+exclude = .aws-sam,bin
 ignore = E501,F405
 max-line-length = 120
