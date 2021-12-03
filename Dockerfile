@@ -16,7 +16,12 @@ RUN yumdownloader -x \*i686 --archlist=x86_64 \
   clamav-scanner-systemd \
   clamav-update \
   elfutils-libs \
+  gnutls \
   json-c \
+  lib64nettle \
+  libprelude \
+  libtasn1 \
+  nettle \
   lz4 \
   pcre2 \
   systemd-libs
@@ -26,7 +31,11 @@ RUN rpm2cpio clamav-lib*.rpm | cpio -idmv
 RUN rpm2cpio clamav-update*.rpm | cpio -idmv
 RUN rpm2cpio clamd-0*.rpm | cpio -idmv
 RUN rpm2cpio elfutils-libs*.rpm | cpio -idmv
+RUN rpm2cpio gnutls*.rpm | cpio -idmv
+RUN rpm2cpio nettle*.rpm | cpio -idmv
 RUN rpm2cpio json-c*.rpm | cpio -idmv
+RUN rpm2cpio libprelude*.rpm | cpio -idmv
+RUN rpm2cpio libtasn1*.rpm | cpio -idmv
 RUN rpm2cpio lz4*.rpm | cpio -idmv
 RUN rpm2cpio pcre*.rpm | cpio -idmv
 RUN rpm2cpio systemd-libs*.rpm | cpio -idmv
