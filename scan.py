@@ -264,6 +264,7 @@ def lambda_handler(event, context):
     except ClientError as error:
         print(error.response['Error']['Code']) #a summary of what went wrong
         print(error.response['Error']['Message']) #explanation of what went wrong
+        raise
 
     scan_result, scan_signature = clamav.scan_file(file_path)
     print(
