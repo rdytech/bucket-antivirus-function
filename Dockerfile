@@ -21,6 +21,7 @@ RUN yumdownloader -x \*i686 --archlist=x86_64 \
   lib64nettle \
   libprelude \
   libtasn1 \
+  libtool-ltdl \
   nettle \
   lz4 \
   pcre2 \
@@ -36,11 +37,20 @@ RUN rpm2cpio nettle*.rpm | cpio -idmv
 RUN rpm2cpio json-c*.rpm | cpio -idmv
 RUN rpm2cpio libprelude*.rpm | cpio -idmv
 RUN rpm2cpio libtasn1*.rpm | cpio -idmv
+RUN rpm2cpio libtool*.rpm | cpio -idmv
 RUN rpm2cpio lz4*.rpm | cpio -idmv
 RUN rpm2cpio pcre*.rpm | cpio -idmv
 RUN rpm2cpio systemd-libs*.rpm | cpio -idmv
 
 # Copy over the binaries and libraries
+RUN cp -r /usr/lib64/libpcre* \
+       /usr/lib64/libxml2* \
+       /usr/lib64/liblzma* \
+       /usr/lib64/libgcrypt* \
+       /usr/lib64/libgpg-error* \
+       /usr/lib64/libelf* \
+       /opt/app/clamav/
+
 RUN cp -r /tmp/usr/bin/clamdscan \
        /tmp/usr/sbin/clamd \
        /tmp/usr/bin/freshclam \
@@ -55,3 +65,5 @@ RUN echo "LogFile /tmp/clamd.log" >> /opt/app/clamav/scan.conf
 # Fix the freshclam.conf settings
 RUN echo "DatabaseMirror database.clamav.net" > /opt/app/clamav/freshclam.conf
 RUN echo "CompressLocalDatabase yes" >> /opt/app/clamav/freshclam.conf
+
+RUN export PATH="$PATH:/usr/lib64"

@@ -9,7 +9,7 @@ Parameters:
 Globals:
   Function:
     Timeout: 300
-    Runtime: python3.7
+    Runtime: python3.8
     Environment:
       Variables:
         AV_DEFINITION_S3_BUCKET: !Ref S3BucketClamavVirusDatabase
