@@ -39,7 +39,6 @@ from common import AV_TIMESTAMP_METADATA
 from common import create_dir
 from common import get_timestamp
 
-
 clamd_pid = None
 
 

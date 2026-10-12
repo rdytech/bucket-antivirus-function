@@ -49,9 +49,7 @@ class TestClamAV(unittest.TestCase):
 
     @mock.patch("clamav.create_dir")
     @mock.patch("clamav.subprocess.Popen")
-    def test_update_defs_from_freshclam_library_path(
-        self, mock_popen, mock_create_dir
-    ):
+    def test_update_defs_from_freshclam_library_path(self, mock_popen, mock_create_dir):
         mock_popen.return_value.communicate.return_value = (b"", None)
         mock_popen.return_value.returncode = 0
 
@@ -64,8 +62,7 @@ class TestClamAV(unittest.TestCase):
     def test_scan_output_to_json_clean(self):
         file_path = "/tmp/test.txt"
         signature = AV_SIGNATURE_OK
-        output = textwrap.dedent(
-            """\
+        output = textwrap.dedent("""\
         Scanning {0}
         {0}: {1}
         ----------- SCAN SUMMARY -----------
@@ -77,10 +74,7 @@ class TestClamAV(unittest.TestCase):
         Data scanned: 0.00 MB
         Data read: 0.00 MB (ratio 0.00:1)
         Time: 80.299 sec (1 m 20 s)
-        """.format(
-                file_path, signature
-            )
-        )
+        """.format(file_path, signature))
         summary = scan_output_to_json(output)
         self.assertEqual(summary[file_path], signature)
         self.assertEqual(summary["Infected files"], "0")
@@ -88,8 +82,7 @@ class TestClamAV(unittest.TestCase):
     def test_scan_output_to_json_infected(self):
         file_path = "/tmp/eicar.com.txt"
         signature = "Eicar-Test-Signature FOUND"
-        output = textwrap.dedent(
-            """\
+        output = textwrap.dedent("""\
         Scanning {0}
         {0}: {1}
         {0}!(0): {1}
@@ -102,10 +95,7 @@ class TestClamAV(unittest.TestCase):
         Data scanned: 0.00 MB
         Data read: 0.00 MB (ratio 0.00:1)
         Time: 80.299 sec (1 m 20 s)
-        """.format(
-                file_path, signature
-            )
-        )
+        """.format(file_path, signature))
         summary = scan_output_to_json(output)
         self.assertEqual(summary[file_path], signature)
         self.assertEqual(summary["Infected files"], "1")
