@@ -15,8 +15,7 @@
 
 import errno
 import unittest
-
-import mock
+from unittest import mock
 
 from common import create_dir
 

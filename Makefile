@@ -12,7 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-AMZ_LINUX_VERSION:=2
+# Lambda architecture: arm64 or x86_64. The ClamAV binaries and the lambda
+# functions are both built for this architecture.
+ARCH ?= arm64
+ifeq ($(ARCH),arm64)
+docker_platform := linux/arm64
+else ifeq ($(ARCH),x86_64)
+docker_platform := linux/amd64
+else
+$(error ARCH must be arm64 or x86_64, got "$(ARCH)")
+endif
+
 current_dir := $(shell pwd)
 container_dir := /opt/app/clamav
 circleci := ${CIRCLECI}
@@ -33,15 +43,19 @@ clean:  ## Clean build artifacts
 
 .PHONY: archive
 archive: clean  ## Create the archive for AWS lambda
-	docker buildx build --platform linux/amd64 -t bucket-antivirus-function:latest .
+	docker buildx build --platform $(docker_platform) --load -t bucket-antivirus-function:$(ARCH) .
 	mkdir -p ./bin
-	docker run -v $(current_dir)/bin:/opt/mount --rm bucket-antivirus-function:latest  bash -c "cp -r ${container_dir}/* /opt/mount/"
-	sam build --use-container
+	docker run --platform $(docker_platform) -v $(current_dir)/bin:/opt/mount --rm bucket-antivirus-function:$(ARCH) bash -c "cp -r ${container_dir}/* /opt/mount/"
+	sam build --use-container --parameter-overrides Architecture=$(ARCH)
+
+.PHONY: deploy
+deploy:  ## Deploy the stack built by `make archive` (pass the same ARCH)
+	sam deploy --guided --parameter-overrides Architecture=$(ARCH)
 
 .PHONY: pre_commit_install  ## Ensure that pre-commit hook is installed and kept up to date
 pre_commit_install: .git/hooks/pre-commit ## Ensure pre-commit is installed
-.git/hooks/pre-commit: /usr/local/bin/pre-commit
-	pip install pre-commit==1.18.3
+.git/hooks/pre-commit:
+	pip install pre-commit==4.6.2
 	pre-commit install
 	pre-commit install-hooks
 
@@ -51,11 +65,12 @@ pre_commit_tests: ## Run pre-commit tests
 
 .PHONY: test
 test: clean  ## Run python tests
-	nosetests
+	pytest
 
 .PHONY: coverage
 coverage: clean  ## Run python tests with coverage
-	nosetests --with-coverage
+	coverage run -m pytest
+	coverage report
 
 .PHONY: scan
 scan:
