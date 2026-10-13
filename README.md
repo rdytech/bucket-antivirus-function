@@ -34,7 +34,7 @@ or INFECTED, along with the date and time of the scan.
 
 ### Requirements
 
-- [Docker](https://www.docker.com/) with `buildx` (included in Docker Desktop)
+- [Docker Desktop](https://www.docker.com/) (includes `buildx` and cross-architecture emulation), or Docker Engine with `buildx` and QEMU/binfmt configured for cross-architecture builds
 - [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)
 
 ### Build from Source
