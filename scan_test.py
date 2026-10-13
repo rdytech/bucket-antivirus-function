@@ -34,6 +34,7 @@ from scan import set_av_metadata
 from scan import set_av_tags
 from scan import sns_start_scan
 from scan import sns_scan_results
+from scan import str_to_bool
 from scan import verify_s3_object_version
 
 
@@ -436,3 +437,11 @@ class TestScan(unittest.TestCase):
                     self.s3_bucket_name, self.s3_key_name
                 ),
             )
+
+    def test_str_to_bool(self):
+        for value in ["y", "Yes", "t", "True", "on", "1", True]:
+            self.assertTrue(str_to_bool(value), value)
+        for value in ["n", "No", "f", "False", "off", "0", False]:
+            self.assertFalse(str_to_bool(value), value)
+        with self.assertRaises(ValueError):
+            str_to_bool("maybe")

@@ -11,14 +11,15 @@ version: "2.1"
 
 executors:
   primary:
-    docker:
-      - image: docker:17.05.0-ce
+    machine:
+      image: ubuntu-2404:current
+    resource_class: arm.medium
   python_test:
     docker:
-      - image: circleci/python:3.7-stretch
+      - image: cimg/python:3.13
   pre_commit_test:
     docker:
-      - image: circleci/python:3.7-stretch
+      - image: cimg/python:3.13
 
 jobs:
 
@@ -27,16 +28,13 @@ jobs:
     executor: primary
     working_directory: ~/src
     steps:
-      - setup_remote_docker:
-          reusable: true    # default - false
-          exclusive: true   # default - true
-      - run:
-          name: Dependencies
-          command: apk add --no-cache make git curl openssh
       - checkout
       - run:
+          name: Dependencies
+          command: pip install aws-sam-cli
+      - run:
           name: Build
-          command: make archive
+          command: make archive ARCH=arm64
 
   # `pre_commit_deps` is used for cache pre-commit sources
   pre_commit_deps:
@@ -47,7 +45,7 @@ jobs:
       - restore_cache:
           keys:
             - pre-commit-dot-cache-{{ checksum ".pre-commit-config.yaml" }}
-      - run: sudo pip install pre-commit==1.18.3
+      - run: pip install pre-commit==4.6.2
       - run: pre-commit install-hooks
 
       - save_cache:
@@ -63,7 +61,7 @@ jobs:
       - restore_cache:
           keys:
             - pre-commit-dot-cache-{{ checksum ".pre-commit-config.yaml" }}
-      - run: sudo pip install pre-commit==1.18.3
+      - run: pip install pre-commit==4.6.2
       - run:
           name: Run pre-commit tests
           command: pre-commit run --all-files
@@ -76,9 +74,9 @@ jobs:
       - restore_cache:
           keys:
             - pre-commit-dot-cache-{{ checksum ".pre-commit-config.yaml" }}
-      - run: sudo pip install -r requirements.txt
-      - run: sudo pip install -r requirements-dev.txt
-      - run: nosetests
+      - run: pip install -r requirements.txt
+      - run: pip install -r requirements-dev.txt
+      - run: pytest
 
 workflows:
   version: 2

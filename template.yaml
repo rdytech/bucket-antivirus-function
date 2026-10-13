@@ -5,11 +5,20 @@ Parameters:
   ScanBuckets:
     Description: A comma separated list of bucket ARNs the function is allowed to scan
     Type: CommaDelimitedList
+  Architecture:
+    Description: Lambda architecture, must match the ARCH the ClamAV binaries were built for
+    Type: String
+    Default: arm64
+    AllowedValues:
+      - arm64
+      - x86_64
 
 Globals:
   Function:
     Timeout: 300
-    Runtime: python3.8
+    Runtime: python3.13
+    Architectures:
+      - !Ref Architecture
     Environment:
       Variables:
         AV_DEFINITION_S3_BUCKET: !Ref S3BucketClamavVirusDatabase

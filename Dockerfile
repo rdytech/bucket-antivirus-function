@@ -1,69 +1,40 @@
-FROM amazonlinux:2
+# Builds the ClamAV binaries and shared libraries bundled into the lambda package.
+# The base image must match the OS of the lambda runtime (python3.13 runs on
+# Amazon Linux 2023). Build with `--platform linux/arm64` or `--platform linux/amd64`
+# to match the lambda architecture (see ARCH in the Makefile).
+FROM amazonlinux:2023
 
-# Set up working directories
-RUN mkdir -p /opt/app/clamav
+# ClamAV LTS release packaged by Amazon Linux 2023
+ARG CLAMAV_VERSION=1.4
 
 # Install packages
-RUN yum update -y
-RUN amazon-linux-extras install epel -y
-RUN yum install -y cpio yum-utils zip
+RUN dnf install -y \
+      clamav${CLAMAV_VERSION} \
+      clamd${CLAMAV_VERSION} \
+      clamav${CLAMAV_VERSION}-freshclam \
+      findutils \
+  && dnf clean all
 
-# Download libraries we need to run in lambda
-WORKDIR /tmp
-RUN yumdownloader -x \*i686 --archlist=x86_64 \
-  clamav \
-  clamav-lib \
-  clamav-scanner-systemd \
-  clamav-update \
-  elfutils-libs \
-  gnutls \
-  json-c \
-  lib64nettle \
-  libprelude \
-  libtasn1 \
-  libtool-ltdl \
-  nettle \
-  lz4 \
-  pcre2 \
-  systemd-libs
+# Copy over the binaries
+RUN mkdir -p /opt/app/clamav \
+  && cp /usr/bin/clamdscan \
+        /usr/sbin/clamd \
+        /usr/bin/freshclam \
+        /opt/app/clamav/
 
-RUN rpm2cpio clamav-0*.rpm | cpio -idmv
-RUN rpm2cpio clamav-lib*.rpm | cpio -idmv
-RUN rpm2cpio clamav-update*.rpm | cpio -idmv
-RUN rpm2cpio clamd-0*.rpm | cpio -idmv
-RUN rpm2cpio elfutils-libs*.rpm | cpio -idmv
-RUN rpm2cpio gnutls*.rpm | cpio -idmv
-RUN rpm2cpio nettle*.rpm | cpio -idmv
-RUN rpm2cpio json-c*.rpm | cpio -idmv
-RUN rpm2cpio libprelude*.rpm | cpio -idmv
-RUN rpm2cpio libtasn1*.rpm | cpio -idmv
-RUN rpm2cpio libtool*.rpm | cpio -idmv
-RUN rpm2cpio lz4*.rpm | cpio -idmv
-RUN rpm2cpio pcre*.rpm | cpio -idmv
-RUN rpm2cpio systemd-libs*.rpm | cpio -idmv
+# Copy over every shared library the binaries link against, except glibc which
+# is provided by the lambda runtime and must match its dynamic loader
+RUN ldd /opt/app/clamav/clamdscan /opt/app/clamav/clamd /opt/app/clamav/freshclam \
+  | awk '$2 == "=>" && $3 ~ /^\// {print $3}' \
+  | sort -u \
+  | grep -vE '/(libc|libm|libdl|libpthread|librt|libresolv|libutil)\.so\.[0-9]+$' \
+  | xargs -I{} cp -L {} /opt/app/clamav/
 
-# Copy over the binaries and libraries
-RUN cp -r /usr/lib64/libpcre* \
-       /usr/lib64/libxml2* \
-       /usr/lib64/liblzma* \
-       /usr/lib64/libgcrypt* \
-       /usr/lib64/libgpg-error* \
-       /usr/lib64/libelf* \
-       /opt/app/clamav/
-
-RUN cp -r /tmp/usr/bin/clamdscan \
-       /tmp/usr/sbin/clamd \
-       /tmp/usr/bin/freshclam \
-       /tmp/usr/lib64/* \
-       /opt/app/clamav/
-
-RUN echo "DatabaseDirectory /tmp/clamav_defs" > /opt/app/clamav/scan.conf
-RUN echo "PidFile /tmp/clamd.pid" >> /opt/app/clamav/scan.conf
-RUN echo "LocalSocket /tmp/clamd.sock" >> /opt/app/clamav/scan.conf
-RUN echo "LogFile /tmp/clamd.log" >> /opt/app/clamav/scan.conf
+RUN echo "DatabaseDirectory /tmp/clamav_defs" > /opt/app/clamav/scan.conf \
+  && echo "PidFile /tmp/clamd.pid" >> /opt/app/clamav/scan.conf \
+  && echo "LocalSocket /tmp/clamd.sock" >> /opt/app/clamav/scan.conf \
+  && echo "LogFile /tmp/clamd.log" >> /opt/app/clamav/scan.conf
 
 # Fix the freshclam.conf settings
-RUN echo "DatabaseMirror database.clamav.net" > /opt/app/clamav/freshclam.conf
-RUN echo "CompressLocalDatabase yes" >> /opt/app/clamav/freshclam.conf
-
-RUN export PATH="$PATH:/usr/lib64"
+RUN echo "DatabaseMirror database.clamav.net" > /opt/app/clamav/freshclam.conf \
+  && echo "CompressLocalDatabase yes" >> /opt/app/clamav/freshclam.conf

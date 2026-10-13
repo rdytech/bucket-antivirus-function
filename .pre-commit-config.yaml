@@ -1,29 +1,32 @@
 repos:
 
-  - repo: https://github.com/ambv/black
-    rev: stable
+  - repo: https://github.com/psf/black
+    rev: 26.10.1
     hooks:
       - id: black
-        language_version: python3.8
+        language_version: python3.13
         exclude: >
           (?x)^(
             scripts/gen-docs-index|
           )$
 
-  - repo: git://github.com/pre-commit/pre-commit-hooks
-    rev: v2.2.3
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
     hooks:
       - id: check-ast
       - id: check-json
       - id: check-merge-conflict
       - id: debug-statements
       - id: detect-private-key
-      - id: fix-encoding-pragma
-      - id: flake8
       - id: trailing-whitespace
 
-  - repo: git://github.com/igorshubovych/markdownlint-cli
-    rev: v0.17.0
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.4.1
+    hooks:
+      - id: flake8
+
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.49.1
     hooks:
       - id: markdownlint
         entry: markdownlint --ignore .github/*.md

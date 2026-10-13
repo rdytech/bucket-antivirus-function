@@ -32,14 +32,40 @@ or INFECTED, along with the date and time of the scan.
 
 ## Installation
 
+### Requirements
+
+- [Docker Desktop](https://www.docker.com/) (includes `buildx` and cross-architecture emulation), or Docker Engine with `buildx` and QEMU/binfmt configured for cross-architecture builds
+- [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)
+
 ### Build from Source
 
 To build all functions and clamav binaries, run `make`.  The build process is completed using
 the [Serverless Application Model](https://aws.amazon.com/serverless/sam/) framework.
 
+The functions run on the `python3.13` Lambda runtime (Amazon Linux 2023) and bundle
+[ClamAV](http://www.clamav.net/) 1.4 LTS from the Amazon Linux 2023 package repository.
+
+#### Architecture
+
+The functions can run on either `arm64` (Graviton, the default) or `x86_64`. The `ARCH` variable controls
+the architecture of both the bundled ClamAV binaries and the Lambda functions:
+
+```sh
+make archive              # arm64 (default)
+make archive ARCH=x86_64  # x86_64
+```
+
+Both architectures can be built from either an ARM (e.g. Apple Silicon) or an x86 machine. Building for
+the other architecture uses Docker's emulation, which is slower but produces the same result.
+
 ### Deployment
 
-Use `sam deploy --guided` to deploy the stack to AWS. The guided deployment will require a list of buckets the function can scan. They should be provided in the following format: `arn:aws:s3:::<BUCKET_NAME>/*`
+Use `make deploy` (or, for arm64, `sam deploy --guided --parameter-overrides Architecture=arm64`) to deploy the stack to AWS.
+The guided deployment will require a list of buckets the function can scan. They should be provided in the following
+format: `arn:aws:s3:::<BUCKET_NAME>/*`
+
+The `Architecture` stack parameter must match the `ARCH` used for `make archive`, otherwise the ClamAV binaries
+will fail to execute. Pass the same value to both, e.g. `make archive deploy ARCH=x86_64`.
 
 ### S3 Events
 
@@ -61,7 +87,7 @@ the table below for reference.
 
 | Variable | Description | Default | Required |
 | --- | --- | --- | --- |
-| AV_DEFINITION_S3_BUCKET | Bucket containing antivirus definition files |  | Yes |
+| AV_DEFINITION_S3_BUCKET | Bucket containing antivirus definition files | | Yes |
 | AV_DEFINITION_S3_PREFIX | Prefix for antivirus definition files | clamav_defs | No |
 | AV_DEFINITION_PATH | Path containing files at runtime | /tmp/clamav_defs | No |
 | AV_SCAN_START_SNS_ARN | SNS topic ARN to publish notification about start of scan | | No |
@@ -164,7 +190,7 @@ To run the tests manually run `make pre_commit_tests` or `pre-commit run -a`.
 
 ### Python Tests
 
-The python tests in this repository use `unittest` and are run via the `nose` utility. To run them you will need
+The python tests in this repository use `unittest` and are run via `pytest`. To run them you will need
 to install the developer resources and then run the tests:
 
 ```sh

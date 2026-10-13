@@ -15,19 +15,18 @@
 
 import datetime
 import os
-import re
 import textwrap
 import unittest
+from unittest import mock
 
 import boto3
 import botocore.session
 from botocore.stub import Stubber
-import mock
 
-from clamav import RE_SEARCH_DIR
 from clamav import scan_output_to_json
 from clamav import md5_from_s3_tags
 from clamav import time_from_s3
+from clamav import update_defs_from_freshclam
 from clamav import update_defs_from_s3
 from common import AV_DEFINITION_FILE_PREFIXES
 from common import AV_DEFINITION_FILE_SUFFIXES
@@ -48,28 +47,22 @@ class TestClamAV(unittest.TestCase):
             "sns", region_name="us-west-2"
         )
 
-    def test_current_library_search_path(self):
-        # Calling `ld --verbose` returns a lot of text but the line to check is this one:
-        search_path = """SEARCH_DIR("=/usr/x86_64-redhat-linux/lib64"); SEARCH_DIR("=/usr/lib64"); SEARCH_DIR("=/usr/local/lib64"); SEARCH_DIR("=/lib64"); SEARCH_DIR("=/usr/x86_64-redhat-linux/lib"); SEARCH_DIR("=/usr/local/lib"); SEARCH_DIR("=/lib"); SEARCH_DIR("=/usr/lib");"""  # noqa
-        rd_ld = re.compile(RE_SEARCH_DIR)
-        all_search_paths = rd_ld.findall(search_path)
-        expected_search_paths = [
-            "/usr/x86_64-redhat-linux/lib64",
-            "/usr/lib64",
-            "/usr/local/lib64",
-            "/lib64",
-            "/usr/x86_64-redhat-linux/lib",
-            "/usr/local/lib",
-            "/lib",
-            "/usr/lib",
-        ]
-        self.assertEqual(all_search_paths, expected_search_paths)
+    @mock.patch("clamav.create_dir")
+    @mock.patch("clamav.subprocess.Popen")
+    def test_update_defs_from_freshclam_library_path(self, mock_popen, mock_create_dir):
+        mock_popen.return_value.communicate.return_value = (b"", None)
+        mock_popen.return_value.returncode = 0
+
+        returncode = update_defs_from_freshclam("/tmp/clamav_defs", "/var/task/bin")
+
+        self.assertEqual(returncode, 0)
+        env = mock_popen.call_args.kwargs["env"]
+        self.assertEqual(env["LD_LIBRARY_PATH"], "/var/task/bin")
 
     def test_scan_output_to_json_clean(self):
         file_path = "/tmp/test.txt"
         signature = AV_SIGNATURE_OK
-        output = textwrap.dedent(
-            """\
+        output = textwrap.dedent("""\
         Scanning {0}
         {0}: {1}
         ----------- SCAN SUMMARY -----------
@@ -81,10 +74,7 @@ class TestClamAV(unittest.TestCase):
         Data scanned: 0.00 MB
         Data read: 0.00 MB (ratio 0.00:1)
         Time: 80.299 sec (1 m 20 s)
-        """.format(
-                file_path, signature
-            )
-        )
+        """.format(file_path, signature))
         summary = scan_output_to_json(output)
         self.assertEqual(summary[file_path], signature)
         self.assertEqual(summary["Infected files"], "0")
@@ -92,8 +82,7 @@ class TestClamAV(unittest.TestCase):
     def test_scan_output_to_json_infected(self):
         file_path = "/tmp/eicar.com.txt"
         signature = "Eicar-Test-Signature FOUND"
-        output = textwrap.dedent(
-            """\
+        output = textwrap.dedent("""\
         Scanning {0}
         {0}: {1}
         {0}!(0): {1}
@@ -106,10 +95,7 @@ class TestClamAV(unittest.TestCase):
         Data scanned: 0.00 MB
         Data read: 0.00 MB (ratio 0.00:1)
         Time: 80.299 sec (1 m 20 s)
-        """.format(
-                file_path, signature
-            )
-        )
+        """.format(file_path, signature))
         summary = scan_output_to_json(output)
         self.assertEqual(summary[file_path], signature)
         self.assertEqual(summary["Infected files"], "1")
