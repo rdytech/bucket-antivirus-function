@@ -60,7 +60,7 @@ the other architecture uses Docker's emulation, which is slower but produces the
 
 ### Deployment
 
-Use `make deploy` (or `sam deploy --guided --parameter-overrides Architecture=<ARCH>`) to deploy the stack to AWS.
+Use `make deploy` (or, for arm64, `sam deploy --guided --parameter-overrides Architecture=arm64`) to deploy the stack to AWS.
 The guided deployment will require a list of buckets the function can scan. They should be provided in the following
 format: `arn:aws:s3:::<BUCKET_NAME>/*`
 
